@@ -11,7 +11,7 @@ Agents are useful on business data, but a model that writes arbitrary SQL agains
 This server lets an agent explore and query data **only through a small set of tools, only on approved tables, and only for reading**.
 
 ## Architecture
-
+Target architecture. Currently runs locally with Docker; Azure deployment is planned.
 ```mermaid
 flowchart LR
     Agent["AI agent<br/>(Claude, VS Code Copilot, ...)"] -- "MCP over HTTPS<br/>X-API-Key" --> ACA
