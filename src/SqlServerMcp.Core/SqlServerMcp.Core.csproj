@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Domain and security rules. No reference to SqlClient or ASP.NET Core,
+       so everything here is unit-testable without a database. -->
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SqlServerMcp.Core.Tests" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- ASP.NET Core host: MCP over Streamable HTTP, API key, health checks. -->
+
+  <PropertyGroup>
+    <UserSecretsId>sqlserver-mcp-server</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SqlServerMcp.Core\SqlServerMcp.Core.csproj" />
+    <ProjectReference Include="..\SqlServerMcp.Infrastructure\SqlServerMcp.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,105 @@
+# CI/CD for SqlServerMcp.
+#   Build  : restore, build, test, code coverage    (every push and pull request)
+#   Docker : build and push the image to ACR        (main only)
+#   Deploy : update the Azure Container App         (main only, through the 'production' environment)
+#
+# One-time setup in Azure DevOps (see backlog, Feature "CI/CD"):
+#   - Pipeline connected to the GitHub repo (Azure Pipelines GitHub App)
+#   - Service connection "acr-sqlservermcp"  : Docker Registry -> Azure Container Registry
+#   - Service connection "azure-sqlservermcp": Azure Resource Manager (workload identity federation)
+#   - Environment "production" (add an approval check if you want a manual gate)
+
+trigger:
+  branches:
+    include: [main]
+
+pr:
+  branches:
+    include: [main]
+
+variables:
+  buildConfiguration: Release
+  dotnetVersion: 10.0.x
+  # Placeholders: replace with your own names.
+  acrServiceConnection: acr-sqlservermcp
+  azureServiceConnection: azure-sqlservermcp
+  acrLoginServer: <your-registry>.azurecr.io
+  imageRepository: sqlserver-mcp
+  resourceGroup: rg-sqlservermcp
+  containerAppName: ca-sqlservermcp
+  isMain: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')]
+
+stages:
+  - stage: Build
+    displayName: Build and test
+    jobs:
+      - job: build
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: UseDotNet@2
+            displayName: Install .NET SDK
+            inputs:
+              packageType: sdk
+              version: $(dotnetVersion)
+
+          - script: dotnet restore
+            displayName: Restore
+
+          - script: dotnet build --configuration $(buildConfiguration) --no-restore
+            displayName: Build
+
+          - task: DotNetCoreCLI@2
+            displayName: Test
+            inputs:
+              command: test
+              projects: tests/**/*.csproj
+              arguments: --configuration $(buildConfiguration) --no-build --collect "XPlat Code Coverage"
+              publishTestResults: true
+
+          - task: PublishCodeCoverageResults@2
+            displayName: Publish code coverage
+            inputs:
+              summaryFileLocation: $(Agent.TempDirectory)/**/coverage.cobertura.xml
+
+  - stage: Docker
+    displayName: Build and push image
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables.isMain, true))
+    jobs:
+      - job: docker
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: Docker@2
+            displayName: Build and push to ACR
+            inputs:
+              command: buildAndPush
+              containerRegistry: $(acrServiceConnection)
+              repository: $(imageRepository)
+              dockerfile: Dockerfile
+              buildContext: .
+              tags: |
+                $(Build.BuildId)
+                latest
+
+  - stage: Deploy
+    displayName: Deploy to Azure Container Apps
+    dependsOn: Docker
+    condition: and(succeeded(), eq(variables.isMain, true))
+    jobs:
+      - deployment: deploy
+        environment: production
+        pool:
+          vmImage: ubuntu-latest
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureContainerApps@1
+                  displayName: Update Container App image
+                  inputs:
+                    azureSubscription: $(azureServiceConnection)
+                    resourceGroup: $(resourceGroup)
+                    containerAppName: $(containerAppName)
+                    imageToDeploy: $(acrLoginServer)/$(imageRepository):$(Build.BuildId)
