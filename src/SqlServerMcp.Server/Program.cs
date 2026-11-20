@@ -11,6 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services
     .AddOptions<SqlMcpOptions>()
     .Bind(builder.Configuration.GetSection(SqlMcpOptions.SectionName))
+    .Validate(o => o.AllowedTables.All(t => TableName.TryParse(t, out _)), "SqlMcp:AllowedTables contains an invalid name. Expected 'Schema.Table' using only letters, digits and underscores.")
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
