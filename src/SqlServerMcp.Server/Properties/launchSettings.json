@@ -1,0 +1,13 @@
+{
+  "profiles": {
+    "SqlServerMcp.Server": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "health",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:52322;http://localhost:52323"
+    }
+  }
+}
