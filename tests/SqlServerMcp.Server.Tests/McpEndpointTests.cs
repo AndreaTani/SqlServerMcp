@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -41,7 +40,7 @@ public sealed class McpEndpointTests : IClassFixture<McpEndpointTests.Factory>
     {
         using var client = CreateMcpClient(apiKey: null);
 
-        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), JsonRpcRequest("tools/list", new { }));
+        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), ToolsListRequest());
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -51,8 +50,7 @@ public sealed class McpEndpointTests : IClassFixture<McpEndpointTests.Factory>
     {
         using var client = CreateMcpClient(apiKey: "wrong");
 
-        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), JsonRpcRequest("tools/list", new { }));
-
+        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), ToolsListRequest());
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
@@ -61,7 +59,7 @@ public sealed class McpEndpointTests : IClassFixture<McpEndpointTests.Factory>
     {
         using var client = CreateMcpClient();
 
-        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), JsonRpcRequest("tools/list", new { }));
+        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), ToolsListRequest());
         var body = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -73,9 +71,7 @@ public sealed class McpEndpointTests : IClassFixture<McpEndpointTests.Factory>
     {
         using var client = CreateMcpClient();
 
-        var request = JsonRpcRequest("tools/call", new { name = "list_tables", arguments = new { } });
-
-        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), request);
+        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), ToolsCallRequest("list_tables"));
         var body = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -85,6 +81,12 @@ public sealed class McpEndpointTests : IClassFixture<McpEndpointTests.Factory>
 
     private static JsonContent JsonRpcRequest(string method, object parameters) =>
         JsonContent.Create(new { jsonrpc = "2.0", id = 1, method, @params = parameters });
+
+    private static JsonContent ToolsListRequest() =>
+    JsonRpcRequest("tools/list", new { });
+
+    private static JsonContent ToolsCallRequest(string toolName, object? arguments = null) =>
+        JsonRpcRequest("tools/call", new { name = toolName, arguments = arguments ?? new { } });
 
     private HttpClient CreateMcpClient(string? apiKey = TestApiKey)
     {
@@ -110,7 +112,8 @@ public sealed class McpEndpointTests : IClassFixture<McpEndpointTests.Factory>
 
             builder.ConfigureTestServices(services =>
             {
-                IReadOnlyList<TableInfo> tables = [
+                IReadOnlyList<TableInfo> tables = 
+                [
                     new TableInfo("SalesLT", "Product", null),
                     new TableInfo("SalesLT", "Customer", null),
                 ];
