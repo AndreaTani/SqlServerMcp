@@ -39,7 +39,7 @@ public sealed class McpEndpointTests : IClassFixture<McpEndpointTests.Factory>
     [Fact]
     public async Task Mcp_WithoutApiKey_ReturnsUnauthorized()
     {
-        using var client = _factory.CreateClient();
+        using var client = CreateMcpClient(apiKey: null);
 
         var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), JsonRpcRequest("tools/list", new { }));
 
@@ -49,8 +49,7 @@ public sealed class McpEndpointTests : IClassFixture<McpEndpointTests.Factory>
     [Fact]
     public async Task Mcp_WithWrongApiKey_ReturnsUnauthorized()
     {
-        using var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add("X-API-Key", "wrong");
+        using var client = CreateMcpClient(apiKey: "wrong");
 
         var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), JsonRpcRequest("tools/list", new { }));
 
@@ -60,9 +59,7 @@ public sealed class McpEndpointTests : IClassFixture<McpEndpointTests.Factory>
     [Fact]
     public async Task Mcp_WithApiKey_ListsTheListTablesTool()
     {
-        using var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add("X-API-Key", TestApiKey);
-        client.DefaultRequestHeaders.Add("Accept", "application/json, text/event-stream");
+        using var client = CreateMcpClient();
 
         var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), JsonRpcRequest("tools/list", new { }));
         var body = await response.Content.ReadAsStringAsync();
@@ -71,8 +68,36 @@ public sealed class McpEndpointTests : IClassFixture<McpEndpointTests.Factory>
         Assert.Contains("list_tables", body, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Mcp_CallListTables_ReturnsOnlyAllowedTables()
+    {
+        using var client = CreateMcpClient();
+
+        var request = JsonRpcRequest("tools/call", new { name = "list_tables", arguments = new { } });
+
+        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), request);
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Product", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("Customer", body, StringComparison.Ordinal);
+    }
+
     private static JsonContent JsonRpcRequest(string method, object parameters) =>
         JsonContent.Create(new { jsonrpc = "2.0", id = 1, method, @params = parameters });
+
+    private HttpClient CreateMcpClient(string? apiKey = TestApiKey)
+    {
+        var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add("Accept", "application/json, text/event-stream");
+
+        if (apiKey is not null)
+        {
+            client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+        }
+
+        return client;
+    }
 
     public sealed class Factory : WebApplicationFactory<Program>
     {
