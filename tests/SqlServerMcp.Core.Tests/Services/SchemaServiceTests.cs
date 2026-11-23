@@ -70,4 +70,42 @@ public class SchemaServiceTests
 
         _repository.Verify(r => r.GetTablesAsync(cts.Token), Times.Once);
     }
+
+    [Fact]
+    public async Task ListTablesAsync_IgnoresMalformedNamesFromDatabase()
+    {
+        // The database returns malformed names; SchemaService must drop them instead of throwing.
+        IReadOnlyList<TableInfo> visibleToLogin =
+        [
+            new TableInfo("SalesLT", "Product", "Products sold"),
+            new TableInfo("Sales.LT", "Product", null),
+            new TableInfo("SalesLT", "Product; DROP TABLE x", null),
+        ];
+        _repository
+            .Setup(r => r.GetTablesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(visibleToLogin);
+
+        var service = new SchemaService(_repository.Object, new TableAllowList(["SalesLT.Product"]));
+
+        var result = await service.ListTablesAsync(CancellationToken.None);
+
+        var table = Assert.Single(result);
+        Assert.Equal("SalesLT", table.Schema);
+        Assert.Equal("Product", table.Name);
+    }
+
+    [Fact]
+    public async Task ListTablesAsync_RepositoryFails_PropagatesException()
+    {
+        var failureException = new InvalidOperationException("Database doesn't respond");
+        _repository
+            .Setup(r => r.GetTablesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(failureException);
+
+        var service = new SchemaService(_repository.Object, new TableAllowList(["SalesLT.Product"]));
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => service.ListTablesAsync(CancellationToken.None));
+
+        Assert.Same(failureException, exception);
+    }
 }
