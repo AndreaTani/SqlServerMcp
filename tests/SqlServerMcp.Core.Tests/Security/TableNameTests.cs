@@ -49,6 +49,19 @@ public class TableNameTests
     }
 
     [Fact]
+    public void TryParse_Identifier128Chars_ReturnsTrue()
+    {
+        var tableName = new string('a', 128);
+        var input = "dbo." + tableName;
+
+        var ok = TableName.TryParse(input, out var table);
+
+        Assert.True(ok);
+        Assert.Equal("dbo", table.Schema);
+        Assert.Equal(tableName, table.Name);
+    }
+
+    [Fact]
     public void Parse_InvalidName_Throws()
     {
         Assert.Throws<ArgumentException>(() => TableName.Parse("x; DROP TABLE y"));
@@ -60,5 +73,17 @@ public class TableNameTests
         var table = TableName.Parse("SalesLT.Product");
 
         Assert.Equal("[SalesLT].[Product]", table.ToQuotedIdentifier());
+    }
+
+    [Fact]
+    public void ToQuotedIdentifier_ReservedWord_IsBracketed()
+    {
+        var input = "dbo.Order";
+        var expected = "[dbo].[Order]";
+
+        var ok = TableName.TryParse(input, out var table);
+
+        Assert.True(ok);
+        Assert.Equal(expected, table.ToQuotedIdentifier());
     }
 }
