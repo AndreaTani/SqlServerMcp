@@ -1,10 +1,14 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text;
+
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+
 using Moq;
+
 using SqlServerMcp.Core.Abstractions;
 using SqlServerMcp.Core.Models;
 
@@ -37,7 +41,7 @@ public sealed class McpEndpointTests : IClassFixture<McpEndpointTests.Factory>
     {
         using var client = _factory.CreateClient();
 
-        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), ListToolsRequest());
+        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), JsonRpcRequest("tools/list", new { }));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -48,7 +52,7 @@ public sealed class McpEndpointTests : IClassFixture<McpEndpointTests.Factory>
         using var client = _factory.CreateClient();
         client.DefaultRequestHeaders.Add("X-API-Key", "wrong");
 
-        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), ListToolsRequest());
+        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), JsonRpcRequest("tools/list", new { }));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -60,15 +64,15 @@ public sealed class McpEndpointTests : IClassFixture<McpEndpointTests.Factory>
         client.DefaultRequestHeaders.Add("X-API-Key", TestApiKey);
         client.DefaultRequestHeaders.Add("Accept", "application/json, text/event-stream");
 
-        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), ListToolsRequest());
+        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), JsonRpcRequest("tools/list", new { }));
         var body = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("list_tables", body, StringComparison.Ordinal);
     }
 
-    private static StringContent ListToolsRequest() =>
-        new("""{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}""", Encoding.UTF8, "application/json");
+    private static JsonContent JsonRpcRequest(string method, object parameters) =>
+        JsonContent.Create(new { jsonrpc = "2.0", id = 1, method, @params = parameters });
 
     public sealed class Factory : WebApplicationFactory<Program>
     {
@@ -81,7 +85,10 @@ public sealed class McpEndpointTests : IClassFixture<McpEndpointTests.Factory>
 
             builder.ConfigureTestServices(services =>
             {
-                IReadOnlyList<TableInfo> tables = [new TableInfo("SalesLT", "Product", null)];
+                IReadOnlyList<TableInfo> tables = [
+                    new TableInfo("SalesLT", "Product", null),
+                    new TableInfo("SalesLT", "Customer", null),
+                ];
                 var repository = new Mock<ISchemaRepository>();
                 repository
                     .Setup(r => r.GetTablesAsync(It.IsAny<CancellationToken>()))
