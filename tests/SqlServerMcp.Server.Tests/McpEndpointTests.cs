@@ -14,6 +14,7 @@ namespace SqlServerMcp.Server.Tests;
 /// Hosts the real ASP.NET Core pipeline in memory, with the database replaced by a mock.
 /// Verifies the HTTP-level security: health is public, /mcp requires the API key.
 /// </summary>
+[Trait(TestTraits.Category, TestCategories.Integration)]
 public sealed class McpEndpointTests : IClassFixture<McpEndpointTests.Factory>
 {
     private const string TestApiKey = "test-key-123";

@@ -6,6 +6,7 @@ using SqlServerMcp.Core.Services;
 
 namespace SqlServerMcp.Core.Tests.Services;
 
+[Trait(TestTraits.Category, TestCategories.Unit)]
 public class SchemaServiceTests
 {
     private readonly Mock<ISchemaRepository> _repository = new(MockBehavior.Strict);

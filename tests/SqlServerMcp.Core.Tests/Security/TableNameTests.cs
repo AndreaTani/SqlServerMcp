@@ -2,6 +2,7 @@ using SqlServerMcp.Core.Security;
 
 namespace SqlServerMcp.Core.Tests.Security;
 
+[Trait(TestTraits.Category, TestCategories.Unit)]
 public class TableNameTests
 {
     [Theory]

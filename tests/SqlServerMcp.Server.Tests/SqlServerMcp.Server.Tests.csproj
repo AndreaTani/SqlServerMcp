@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\SqlServerMcp.Server\SqlServerMcp.Server.csproj" />
+    <ProjectReference Include="..\SqlServerMcp.Tests.Common\SqlServerMcp.Tests.Common.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -22,6 +23,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="SqlServerMcp.Tests.Common" />
   </ItemGroup>
 
 </Project>

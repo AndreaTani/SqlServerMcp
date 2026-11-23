@@ -2,6 +2,7 @@ using SqlServerMcp.Core.Security;
 
 namespace SqlServerMcp.Core.Tests.Security;
 
+[Trait(TestTraits.Category, TestCategories.Unit)]
 public class TableAllowListTests
 {
     private readonly TableAllowList _allowList = new(["SalesLT.Product", "SalesLT.SalesOrderHeader"]);
