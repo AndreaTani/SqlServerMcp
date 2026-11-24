@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using Microsoft.SqlServer.Server;
+
+using SqlServerMcp.Infrastructure;
 
 using Xunit.Abstractions;
 
@@ -84,12 +84,27 @@ public sealed class StartupValidationTests : IClassFixture<StartupValidationTest
         Assert.Null(exception);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("     ")]
+    public void ServerStartUp_WithConnectionStringEmptyOrWhiteSpace_ThrowsException(string connectionString)
+    {
+        using var factory = _factory.WithWebHostBuilder(builder =>
+            builder.UseSetting(DependencyInjection.SqlConnectionStringKey, connectionString));
+
+        var exception = Assert.Throws<InvalidOperationException>(() => factory.Server);
+
+        _output.WriteLine(exception.Message);
+
+        Assert.Contains(DependencyInjection.SqlConnectionStringKey, exception.Message, StringComparison.Ordinal);
+    }
+
     public sealed class Factory : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment(TestingEnvironment);
-            builder.UseSetting("ConnectionStrings:Sql", "Server=unused;Database=unused");
+            builder.UseSetting(DependencyInjection.SqlConnectionStringKey, "Server=unused;Database=unused");
             builder.UseSetting("ApiKey:Enabled", "true");
             builder.UseSetting("ApiKey:Key", TestApiKey);
         }
