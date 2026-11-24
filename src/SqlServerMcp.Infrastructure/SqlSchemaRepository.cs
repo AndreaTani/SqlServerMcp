@@ -6,11 +6,14 @@ using SqlServerMcp.Core.Options;
 
 namespace SqlServerMcp.Infrastructure;
 
+/// <summary>
+/// Static SQL, no string concatenation. 
+/// sys.tables only returns tables the login has some permission on
+/// so metadata is already limited by the database.
+/// </summary>
 internal sealed class SqlSchemaRepository(ISqlConnectionFactory connectionFactory, IOptions<SqlMcpOptions> options)
     : ISchemaRepository
 {
-    // Static SQL, no string concatenation. sys.tables only returns tables the
-    // login has some permission on, so metadata is already limited by the database.
     private const string ListTablesSql = """
         SELECT  s.name                      AS [Schema],
                 t.name                      AS [Name],
@@ -22,10 +25,12 @@ internal sealed class SqlSchemaRepository(ISqlConnectionFactory connectionFactor
                 AND ep.minor_id = 0
                 AND ep.class = 1
                 AND ep.name = N'MS_Description'
-        WHERE   t.is_ms_shipped = 0
-        ORDER BY s.name, t.name;
+        WHERE   t.is_ms_shipped = 0;
         """;
 
+    /// <summary>
+    /// Returns the user tables visible to the database login, in no particular order.
+    /// </summary>
     public async Task<IReadOnlyList<TableInfo>> GetTablesAsync(CancellationToken cancellationToken)
     {
         await using var connection = connectionFactory.Create();
