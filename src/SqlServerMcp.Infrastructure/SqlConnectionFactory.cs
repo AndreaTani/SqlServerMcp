@@ -2,7 +2,7 @@ using Microsoft.Data.SqlClient;
 
 namespace SqlServerMcp.Infrastructure;
 
-public interface ISqlConnectionFactory
+internal interface ISqlConnectionFactory
 {
     SqlConnection Create();
 }
