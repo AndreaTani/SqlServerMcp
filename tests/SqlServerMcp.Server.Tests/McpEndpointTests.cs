@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -10,6 +9,7 @@ using Moq;
 
 using SqlServerMcp.Core.Abstractions;
 using SqlServerMcp.Core.Models;
+using SqlServerMcp.Server.Tests.Support;
 
 namespace SqlServerMcp.Server.Tests;
 
@@ -21,6 +21,7 @@ namespace SqlServerMcp.Server.Tests;
 public sealed class McpEndpointTests : IClassFixture<McpEndpointTests.Factory>
 {
     private const string TestApiKey = "test-key-123";
+    private const string WrongApiKey = "wrong-key-7f3a9c";
     private readonly Factory _factory;
 
     public McpEndpointTests(Factory factory) => _factory = factory;
@@ -38,9 +39,9 @@ public sealed class McpEndpointTests : IClassFixture<McpEndpointTests.Factory>
     [Fact]
     public async Task Mcp_WithoutApiKey_ReturnsUnauthorized()
     {
-        using var client = CreateMcpClient(apiKey: null);
+        using var client = _factory.CreateMcpClient(apiKey: null);
 
-        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), ToolsListRequest());
+        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), JsonRpcRequest.ToolsList());
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -48,18 +49,18 @@ public sealed class McpEndpointTests : IClassFixture<McpEndpointTests.Factory>
     [Fact]
     public async Task Mcp_WithWrongApiKey_ReturnsUnauthorized()
     {
-        using var client = CreateMcpClient(apiKey: "wrong");
+        using var client = _factory.CreateMcpClient(WrongApiKey);
 
-        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), ToolsListRequest());
+        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), JsonRpcRequest.ToolsList());
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
     public async Task Mcp_WithApiKey_ListsTheListTablesTool()
     {
-        using var client = CreateMcpClient();
+        using var client = _factory.CreateMcpClient(TestApiKey);
 
-        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), ToolsListRequest());
+        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), JsonRpcRequest.ToolsList());
         var body = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -69,36 +70,14 @@ public sealed class McpEndpointTests : IClassFixture<McpEndpointTests.Factory>
     [Fact]
     public async Task Mcp_CallListTables_ReturnsOnlyAllowedTables()
     {
-        using var client = CreateMcpClient();
+        using var client = _factory.CreateMcpClient(TestApiKey);
 
-        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), ToolsCallRequest("list_tables"));
+        var response = await client.PostAsync(new Uri("/mcp", UriKind.Relative), JsonRpcRequest.ToolsCall("list_tables"));
         var body = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("Product", body, StringComparison.Ordinal);
         Assert.DoesNotContain("Customer", body, StringComparison.Ordinal);
-    }
-
-    private static JsonContent JsonRpcRequest(string method, object parameters) =>
-        JsonContent.Create(new { jsonrpc = "2.0", id = 1, method, @params = parameters });
-
-    private static JsonContent ToolsListRequest() =>
-    JsonRpcRequest("tools/list", new { });
-
-    private static JsonContent ToolsCallRequest(string toolName, object? arguments = null) =>
-        JsonRpcRequest("tools/call", new { name = toolName, arguments = arguments ?? new { } });
-
-    private HttpClient CreateMcpClient(string? apiKey = TestApiKey)
-    {
-        var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add("Accept", "application/json, text/event-stream");
-
-        if (apiKey is not null)
-        {
-            client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
-        }
-
-        return client;
     }
 
     public sealed class Factory : WebApplicationFactory<Program>
