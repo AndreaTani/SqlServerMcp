@@ -73,14 +73,25 @@ still use reflection. Attackers are kept out by the layers above, not by access 
 - No secret is stored in the repository. Locally: `.env` (git-ignored) or `dotnet user-secrets`.
   On Azure: a Container Apps secret for the API key, managed identity for the database. 🔜
 - The API key is never written to logs, not even a wrong one: a wrong key is often the
-  right key with a typo. 🔜 (logging of failed attempts is being added)
+  right key with a typo. ✅
+
+## Security events
+
+| EventId | Meaning | LogLevel |
+|---|---|---|
+| **1001** | The API key header is missing from the request | Information |
+| **1002** | The API key header is present but incorrect | Warning |
+
+Both events record the client IP address and User-Agent. The key itself is never logged.
+Behind a reverse proxy, such as the Azure Container Apps ingress, the recorded IP address is the proxy's until the ForwardedHeaders middleware is configured. 🔜
 
 ## Known risks and planned countermeasures
 
 | Risk | Countermeasure | Status |
 |---|---|---|
 | **Resource exhaustion** (many or heavy requests) | Command timeout; row cap; rate limiting on `/mcp` and a request body size limit (Kestrel's default is about 30 MB, an MCP message is a few KB) before the public deployment; Resource Governor for the agent's sessions, classified by `ApplicationName` | ✅ timeout, 🔜 the rest |
-| **Brute force on the API key** | Logging of failed attempts; rate limiting; Entra ID after the MVP | 🔜 |
+| **Brute force on the API key** | Logging of failed attempts; rate limiting; Entra ID after the MVP | ✅ logging, 🔜 the rest |
 | **Prompt injection from the data** (text stored in the database that tries to instruct the agent) | The server is read-only and the agent cannot run free SQL, so injected instructions cannot write or escalate; data is returned as data, never as instructions | 🔜 documented handling |
 | **Configuration drift** between `SqlMcp:AllowedTables` and the database grants | Both lists must be kept in sync; the database layer still blocks anything not granted | Manual |
 | **Sensitive columns** inside allowed tables | Column deny-list | 🔜 after the MVP |
+
