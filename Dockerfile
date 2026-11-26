@@ -6,6 +6,7 @@ WORKDIR /src
 
 # Restore first, in its own layer: it only reruns when a project file changes.
 COPY Directory.Build.props Directory.Packages.props ./
+COPY global.json Directory.Build.props Directory.Packages.props ./
 COPY src/SqlServerMcp.Core/SqlServerMcp.Core.csproj src/SqlServerMcp.Core/
 COPY src/SqlServerMcp.Infrastructure/SqlServerMcp.Infrastructure.csproj src/SqlServerMcp.Infrastructure/
 COPY src/SqlServerMcp.Server/SqlServerMcp.Server.csproj src/SqlServerMcp.Server/
