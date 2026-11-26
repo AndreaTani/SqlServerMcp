@@ -20,12 +20,25 @@ public readonly partial record struct TableName
 
     public string Name { get; }
 
-    /// <summary>Parses "Schema.Table". A missing schema defaults to "dbo".</summary>
+    /// <summary>
+    /// Parses a "Schema.Table" string into a <see cref="TableName"/>. A missing schema defaults to "dbo".
+    /// </summary>
+    /// <remarks>
+    /// Never use for validating input from requests (the agent); use <see cref="TryParse"/> instead. Use it for reading configuration: a wrong configuration should stop the server from starting, so throwing is appropriate.
+    /// </remarks>
+    /// <exception cref="ArgumentException"><paramref name="value"/> is not a valid table name.</exception>
     public static TableName Parse(string value) =>
         TryParse(value, out var result)
             ? result
             : throw new ArgumentException($"'{value}' is not a valid table name. Expected 'Schema.Table'.", nameof(value));
 
+    /// <summary>
+    /// Attempts to parse a "Schema.Table" string into a <see cref="TableName"/>. A missing schema defaults to "dbo".
+    /// </summary>
+    /// <remarks>
+    /// Use this for validating input from requests (the agent). Invalid input from a request is expected, not exceptional: it must become a clear error response, not an exception.
+    /// </remarks>
+    /// <returns><see langword="true"/> if <paramref name="value"/> is a valid table name; otherwise, <see langword="false"/>.</returns>
     public static bool TryParse([NotNullWhen(true)] string? value, out TableName result)
     {
         result = default;
